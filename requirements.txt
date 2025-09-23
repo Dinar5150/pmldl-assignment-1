@@ -1,0 +1,10 @@
+apache-airflow
+scikit-learn
+pandas
+numpy
+mlflow
+joblib
+fastapi
+uvicorn
+streamlit
+requests
