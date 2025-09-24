@@ -5,7 +5,7 @@ st.title("Minimal model demo")
 st.write("Enter features for prediction:")
 
 # Feature names
-feature_names = ["age","sex","bmi","bp","s1","s2","s3","s4","s5","s6","target"]
+feature_names = ["age","sex","bmi","bp","s1","s2","s3","s4","s5","s6"]
 inputs = {}
 
 # Create number inputs for each feature
@@ -19,3 +19,4 @@ if st.button("Predict"):
         st.write(resp.json())
     except Exception as e:
         st.error(f"Request failed: {e}")
+
