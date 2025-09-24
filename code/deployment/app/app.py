@@ -1,23 +1,21 @@
 import streamlit as st
 import requests
 
-BASE_URL = "http://localhost:8000"
+st.title("Minimal model demo")
+st.write("Enter features for prediction:")
 
-st.sidebar.header("Input Features")
+# Feature names
+feature_names = ["age","sex","bmi","bp","s1","s2","s3","s4","s5","s6","target"]
+inputs = {}
 
-features = {}
-for name in ["age","sex","bmi","bp","s1","s2","s3","s4","s5","s6"]:
-    features[name] = st.sidebar.number_input(name, value=0.0, format="%.6f")
+# Create number inputs for each feature
+for name in feature_names:
+    inputs[name] = st.number_input(name, value=0.0)
 
 if st.button("Predict"):
-    payload = {f: features[f] for f in ["age","sex","bmi","bp","s1","s2","s3","s4","s5","s6"]}
+    payload = inputs  # Send as dict to match FastAPI PredictRequest
     try:
-        resp = requests.post(f"{BASE_URL}/predict", json=payload, timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            pred = data.get("prediction")
-            st.success(f"Prediction: {pred:.2f}")
-        else:
-            st.error(f"API error {resp.status_code}: {resp.text}")
+        resp = requests.post("http://api:8000/predict", json=payload, timeout=5)
+        st.write(resp.json())
     except Exception as e:
         st.error(f"Request failed: {e}")

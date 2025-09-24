@@ -1,61 +1,57 @@
 import os
-import pandas as pd
 import joblib
+import json
 import mlflow
 import mlflow.sklearn
-
-from sklearn.model_selection import GridSearchCV
+import pandas as pd
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import Ridge
-from sklearn.metrics import root_mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+PROCESSED_DIR = os.path.join(ROOT, "data", "processed")
+MODELS_DIR = os.path.join(ROOT, "models")
+os.makedirs(MODELS_DIR, exist_ok=True)
+MLFLOW_TRACKING_DIR = os.path.join(ROOT, "mlruns")
 
-def main():
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+mlflow.set_tracking_uri(f"file://{MLFLOW_TRACKING_DIR}")
 
-    proc_train = os.path.join(repo_root, "data", "processed", "train.csv")
-    proc_test = os.path.join(repo_root, "data", "processed", "test.csv")
+train = pd.read_csv(os.path.join(PROCESSED_DIR, "train.csv"))
+test = pd.read_csv(os.path.join(PROCESSED_DIR, "test.csv"))
 
-    df_train = pd.read_csv(proc_train)
-    df_test = pd.read_csv(proc_test)
+X_train = train.drop(columns=["target"]) if "target" in train.columns else train.iloc[:, :-1]
+if "target" in train.columns:
+    y_train = train["target"]
+else:
+    y_train = train.iloc[:, -1]
 
-    X_train = df_train.drop(columns=["target"])
-    y_train = df_train["target"]
-    X_test = df_test.drop(columns=["target"])
-    y_test = df_test["target"]
+X_test = test.drop(columns=["target"]) if "target" in test.columns else test.iloc[:, :-1]
+if "target" in test.columns:
+    y_test = test["target"]
+else:
+    y_test = test.iloc[:, -1]
 
-    param_grid = {"alpha": [0.01, 0.1, 1.0, 10.0, 100.0]}
-    search = GridSearchCV(Ridge(), param_grid, cv=5, n_jobs=-1, scoring="neg_mean_squared_error")
+pipeline = Pipeline([
+    ("scaler", StandardScaler()),
+    ("ridge", Ridge(alpha=1.0))
+])
 
-    search.fit(X_train, y_train)
-    best_model = search.best_estimator_
-
-    preds = best_model.predict(X_test)
-    rmse = root_mean_squared_error(y_test, preds)
+with mlflow.start_run():
+    pipeline.fit(X_train, y_train)
+    preds = pipeline.predict(X_test)
+    rmse = mean_squared_error(y_test, preds) ** 0.5
     mae = mean_absolute_error(y_test, preds)
-    r2 = r2_score(y_test, preds)
 
-    print("Best params:", search.best_params_)
-    print(f"RMSE: {rmse:.4f}, MAE: {mae:.4f}, R2: {r2:.4f}")
+    mlflow.log_metric("rmse", rmse)
+    mlflow.log_metric("mae", mae)
 
-    models_dir = os.path.join(repo_root, "models")
-    os.makedirs(models_dir, exist_ok=True)
-    model_path = os.path.join(models_dir, "linear_regression.joblib")
-    joblib.dump(best_model, model_path)
+    model_path = os.path.join(MODELS_DIR, "model.joblib")
+    joblib.dump(pipeline, model_path)
+    mlflow.sklearn.log_model(pipeline, "model")
 
-    mlflow.set_experiment("diabetes_linear_regression")
-    with mlflow.start_run():
-        for k, v in search.best_params_.items():
-            mlflow.log_param(k, v)
+    metrics = {"rmse": float(rmse), "mae": float(mae)}
+    with open(os.path.join(MODELS_DIR, "metrics.json"), "w") as f:
+        json.dump(metrics, f)
 
-        mlflow.log_metric("rmse", float(rmse))
-        mlflow.log_metric("mae", float(mae))
-        mlflow.log_metric("r2", float(r2))
-
-        mlflow.sklearn.log_model(best_model, "model")
-        mlflow.log_artifact(model_path)
-
-    print(f"Model saved to: {model_path}")
-
-
-if __name__ == "__main__":
-    main()
+print(f"Model saved to {model_path}. Metrics: {metrics}")

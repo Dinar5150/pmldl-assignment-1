@@ -1,0 +1,13 @@
+venv
+__pycache__
+*.pyc
+mlruns
+venv
+data/raw/*
+data/processed/*
+services/airflow/logs
+!data/raw
+models/*
+airflow.cfg
+airflow.db
+simple_auth_manager_passwords.json.generated

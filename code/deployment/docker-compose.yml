@@ -1,44 +1,22 @@
-version: "3.9"
-
 services:
   api:
     build:
       context: ../..
       dockerfile: code/deployment/api/Dockerfile
-    container_name: diabetes-api
+    container_name: minimal-api
     ports:
       - "8000:8000"
     volumes:
-      - ../../models:/app/models
+      - ../../models:/app/../models
     restart: unless-stopped
 
   app:
     build:
       context: ../..
       dockerfile: code/deployment/app/Dockerfile
-    container_name: diabetes-streamlit
+    container_name: minimal-streamlit
     ports:
       - "8501:8501"
-    environment:
-      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
     depends_on:
       - api
-    restart: unless-stopped
-
-  airflow:
-    image: apache/airflow:2.9.2
-    container_name: diabetes-airflow
-    environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__LOAD_EXAMPLES=false
-      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth
-      - _PIP_ADDITIONAL_REQUIREMENTS=scikit-learn pandas numpy mlflow joblib
-      - PROJECT_ROOT=/opt/project
-    volumes:
-      - ../../services/airflow/dags:/opt/airflow/dags
-      - ../..:/opt/project
-    working_dir: /opt/project
-    command: bash -lc "airflow db init && airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com || true && airflow webserver & airflow scheduler"
-    ports:
-      - "8080:8080"
     restart: unless-stopped
