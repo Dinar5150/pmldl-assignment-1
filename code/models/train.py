@@ -4,8 +4,6 @@ import json
 import mlflow
 import mlflow.sklearn
 import pandas as pd
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
@@ -32,14 +30,11 @@ if "target" in test.columns:
 else:
     y_test = test.iloc[:, -1]
 
-pipeline = Pipeline([
-    ("scaler", StandardScaler()),
-    ("ridge", Ridge(alpha=1.0))
-])
+model = Ridge(alpha=1.0)
 
 with mlflow.start_run():
-    pipeline.fit(X_train, y_train)
-    preds = pipeline.predict(X_test)
+    model.fit(X_train, y_train)
+    preds = model.predict(X_test)
     rmse = mean_squared_error(y_test, preds) ** 0.5
     mae = mean_absolute_error(y_test, preds)
 
@@ -47,8 +42,8 @@ with mlflow.start_run():
     mlflow.log_metric("mae", mae)
 
     model_path = os.path.join(MODELS_DIR, "model.joblib")
-    joblib.dump(pipeline, model_path)
-    mlflow.sklearn.log_model(pipeline, "model")
+    joblib.dump(model, model_path)
+    mlflow.sklearn.log_model(model, "model")
 
     metrics = {"rmse": float(rmse), "mae": float(mae)}
     with open(os.path.join(MODELS_DIR, "metrics.json"), "w") as f:
